@@ -1818,7 +1818,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     public void onTileFocused(int position, View card) {
         lastFocused = position;
         if (continueRow != null) {
-            continueRow.setWanted(position < COLUMNS);
+            // Cinematic home: the dock's title and artwork own the space above the dock, so the row waits for Up.
+            continueRow.setWanted(position < COLUMNS && !cinematic);
             updateTopBarDown();
         }
         lastFocusedKey = adapter.keyAt(position);
@@ -2320,7 +2321,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             float dockTop = g.top + grid.getPaddingTop();
             float rowBottom = y + (13 + 6 + 12 + ContinueRow.CARD_H_DP + 12) * density;
             float heroTop = dockTop - 40 * density - hero.getHeight();
-            continueRow.setFits(rowBottom <= heroTop);
+            // Cinematic home hides the dock's title while the row has focus, so only the dock bounds the row.
+            continueRow.setFits(rowBottom <= (cinematic ? dockTop - 40 * density : heroTop));
         });
     }
 
@@ -2566,7 +2568,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
             if (position < COLUMNS) {                      // dock row: the Continue watching row, else the top bar
-                if (continueRow == null || !continueRow.isShowing()) return false;
+                if (continueRow == null) return false;
+                if (cinematic) {                           // the row replaces the dock's title while it has focus
+                    continueRow.setWanted(true);
+                    if (!continueRow.isShowing()) {
+                        continueRow.setWanted(false);
+                        return false;
+                    }
+                    updateTopBarDown();
+                }
+                if (!continueRow.isShowing()) return false;
                 continueRow.focusCard();
                 grid.playSoundEffect(SoundEffectConstants.NAVIGATION_UP);
                 return true;
