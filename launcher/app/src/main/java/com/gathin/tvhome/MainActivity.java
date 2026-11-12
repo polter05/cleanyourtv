@@ -912,7 +912,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) return true;
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                // Back to the dock tile Up came from, not wherever the focus finder lands.
+                // The Continue watching row when it is on screen, else back to the dock tile Up came from.
+                if (continueRow != null && continueRow.isShowing()) {
+                    continueRow.focusCard();
+                    return true;
+                }
                 focusTile(singleRow ? lastFocused : lastFocused % COLUMNS);
                 return true;
             }
@@ -2314,15 +2318,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             View anchor = stats.getVisibility() == View.VISIBLE ? stats : findViewById(R.id.leftBlock);
             Rect a = new Rect(0, 0, anchor.getWidth(), anchor.getHeight());
             root.offsetDescendantRectToMyCoords(anchor, a);
-            float y = a.bottom + 8 * density;
-            if (continueRow.getY() != y) continueRow.setY(y);
+            float top = a.bottom + 8 * density;
             Rect g = new Rect(0, 0, grid.getWidth(), grid.getHeight());
             root.offsetDescendantRectToMyCoords(grid, g);
             float dockTop = g.top + grid.getPaddingTop();
-            float rowBottom = y + (13 + 6 + 12 + ContinueRow.CARD_H_DP + 12) * density;
+            float rowHeight = (13 + 6 + 12 + ContinueRow.CARD_H_DP + 12) * density;
             float heroTop = dockTop - 40 * density - hero.getHeight();
-            // Cinematic home hides the dock's title while the row has focus, so only the dock bounds the row.
-            continueRow.setFits(rowBottom <= (cinematic ? dockTop - 40 * density : heroTop));
+            // Cinematic home: the row takes the dock title's place while it has focus, its bottom where the
+            // title's is, just above the dock. Otherwise it sits under the clock, above the title.
+            float y = cinematic ? dockTop - 40 * density - rowHeight : top;
+            if (continueRow.getY() != y) continueRow.setY(y);
+            continueRow.setFits(cinematic ? y >= top : y + rowHeight <= heroTop);
         });
     }
 
